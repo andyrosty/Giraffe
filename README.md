@@ -51,8 +51,34 @@ The longer you survive, the faster and harder the game becomes.
 ### Prerequisites
 
 - Python 3.9+ recommended
-- PyGame installed
+- PyGame installed (will be automatically installed by the run script if needed)
+
+### Installation
+
+1. Clone this repository
+2. Navigate to the project directory
+
+### Running the Game
+
+You can run the game using the provided run script:
+
+```bash
+# On Windows
+python run.py
+
+# On Linux/macOS (after making the script executable)
+./run.py
+```
+
+Or install pygame manually and run the main file directly:
 
 ```bash
 pip install pygame
+python main.py
+```
 
+### Controls
+
+- **Left/Right Arrow Keys**: Move the giraffe's body left and right
+- **Up/Down Arrow Keys**: Move the giraffe's head up and down
+- **ESC**: Quit the game (after game over)

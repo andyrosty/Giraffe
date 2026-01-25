@@ -1,0 +1,6 @@
+This directory contains game assets.
+Future improvements could include:
+- Giraffe sprite images
+- Leaf sprites (good and rotten)
+- Background images
+- Sound effects
