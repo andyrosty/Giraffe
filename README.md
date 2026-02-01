@@ -1,58 +1,92 @@
 # 🦒 Giraffe
 
-**Giraffe** is a 2D arcade-style game built with **PyGame**.  
-You control a giraffe that grows its neck by eating falling leaves.  
-The longer you survive, the faster and harder the game becomes.
+A tiny 2D arcade-style game built with `PyGame`.
+You control a giraffe that grows its neck by eating falling leaves while avoiding rotten ones.
+Survive as long as you can — the game gets harder over time!
 
 ---
 
 ## 🎮 Gameplay
 
-- The player controls a **giraffe**.
-- The giraffe **starts small** and grows its neck by eating falling **good leaves**.
-- **Rotten leaves** shrink the giraffe’s neck.
-- Leaves fall from the top of the screen at increasing speed.
-- The number of falling leaves increases over time.
-- The giraffe:
-  - Moves **left and right** (body).
-  - Moves its **head up and down**.
-- Only the **head** can eat leaves.
-- A **timer** shows how long you've survived.
-- **Game over** occurs when a **good leaf hits the ground**.
-- The goal: **survive as long as possible**.
+- Control a **giraffe** with a movable head and body.
+- Eat green leaves to grow your neck; red (rotten) leaves shrink it.
+- Leaves fall faster and spawn more frequently as time passes.
+- Only the giraffe’s **head** can eat leaves.
+- The run ends if a green (good) leaf hits the ground.
+- Score = number of good leaves eaten. A timer tracks survival time.
+
+### Controls
+- Move left/right: `A`/`D` or `←`/`→`
+- Move head up/down: `W`/`S` or `↑`/`↓`
+- Restart after game over: `R`
+- Quit: `ESC`
 
 ---
 
-## ⚙️ Game Mechanics
+## 🛠 Requirements
+- Python 3.9+ (3.11+ recommended)
+- `pygame`
 
-- Gradually increasing difficulty:
-  - Falling speed increases.
-  - Giraffe movement speed increases.
-  - Leaf spawn rate increases.
-- Neck growth and shrinkage:
-  - Good leaves → grow neck.
-  - Rotten leaves → shrink neck.
-- Fixed limits:
-  - Maximum giraffe height.
-  - Maximum movement speed.
-- The camera is **zoomed out** from the start to accommodate a fully grown giraffe.
-
----
-
-## 🛠 Tech Stack
-
-- **Python**
-- **PyGame**
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Python 3.9+ recommended
-- PyGame installed
+Install dependencies:
 
 ```bash
 pip install pygame
+```
+
+---
+
+## ▶️ Run the Game
+From the project root:
+
+```bash
+python giraffe_game.py
+```
+
+If you have multiple Python versions installed, you may need `python3`:
+
+```bash
+python3 giraffe_game.py
+```
+
+---
+
+## ⚙️ Mechanics (under the hood)
+- Difficulty ramps up over time:
+  - Falling speed increases (capped)
+  - Giraffe and head movement speed increase (capped)
+  - Leaf spawn rate increases (capped)
+- Neck growth/shrink:
+  - Good leaf: +`NECK_GROW`
+  - Rotten leaf: −`NECK_SHRINK`
+- Game field is zoomed out to fit a max-height giraffe.
+
+You can tweak constants like speeds, caps, and growth values near the top of `giraffe_game.py`.
+
+---
+
+## 🧪 Troubleshooting
+- Module not found: `pygame`
+  - Install with `pip install pygame`
+  - Or ensure you’re using the right interpreter/virtualenv: `python -m pip install pygame`
+- Window doesn’t open on macOS
+  - Try running from a Terminal (not inside certain IDE consoles)
+  - Ensure Python has screen permissions if prompted
+
+---
+
+## 📂 Project Structure
+- `giraffe_game.py` — the game implementation
+- `README.md` — this file
+
+---
+
+
+## 🙌 Credits
+Built with ❤️ by:
+Seibel, Jada
+Bush, Cody
+Orehowski, Zakhary
+Wiley, Adam
+Acheampong, Andrew
+
 
