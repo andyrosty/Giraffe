@@ -1,0 +1,57 @@
+# --- OS / Editor ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.bak
+*~
+
+# --- Python bytecode / caches ---
+__pycache__/
+*$py.class
+
+# --- Packaging / distribution ---
+build/
+dist/
+.eggs/
+*.egg-info/
+*.egg
+
+# --- Virtual environments ---
+.venv/
+venv/
+ENV/
+env/
+.python-version
+
+# --- Test / coverage / tooling caches ---
+.pytest_cache/
+.coverage*
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.pyre/
+.pytype/
+.ruff_cache/
+.cache/
+
+# --- PyInstaller / cx_Freeze ---
+*.spec
+
+# --- Logs ---
+*.log
+
+# --- IDE / Project files ---
+.idea/
+.vscode/
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# --- Misc ---
+# Add any local export/output folders here if needed
+# screenshots/
+# recordings/

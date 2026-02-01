@@ -74,8 +74,27 @@ You can tweak constants like speeds, caps, and growth values near the top of `gi
 
 ---
 
+## 🧪 Unit tests
+
+- Tests live in `tests/`.
+- They include a lightweight `pygame` stub so you can run them in headless environments (no real display or `pygame` needed).
+- The tests never call `main()`; they exercise pure logic deterministically.
+
+Run:
+```bash
+python -m unittest discover -s tests -p "test_*.py" -v
+```
+
+Notes:
+- The pygame stub is injected only inside the test process and does not affect running the game normally.
+- To play the game instead, install `pygame` and run `python giraffe_game.py`.
+
+---
+
 ## 📂 Project Structure
 - `giraffe_game.py` — the game implementation
+- `tests/` — unit tests
+  - `tests/test_giraffe_game.py` — self-contained tests with a headless pygame stub
 - `README.md` — this file
 
 ---
