@@ -83,10 +83,10 @@ You can tweak constants like speeds, caps, and growth values near the top of `gi
 
 ## 🙌 Credits
 Built with ❤️ by:
-Seibel, Jada
-Bush, Cody
-Orehowski, Zakhary
-Wiley, Adam
-Acheampong, Andrew
+Seibel Jada,
+Bush Cody,
+Orehowski Zakhary,
+Wiley Adam,
+Acheampong Andrew.
 
 
