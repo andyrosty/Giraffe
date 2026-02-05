@@ -4,10 +4,10 @@ import sys
 import pygame
 
 # ----------------------------
-# Giraffe
+# Giraffe Game
 # ----------------------------
 
-WIDTH, HEIGHT = 1000, 700  # zoomed out view
+WIDTH, HEIGHT = 1000, 700
 FPS = 60
 
 GROUND_Y = HEIGHT - 60
@@ -23,42 +23,37 @@ GREEN = (40, 170, 70)
 RED = (200, 60, 60)
 YELLOW = (240, 215, 80)
 
-# Difficulty ramp + caps
-RAMP_START = 0.0
+# Difficulty scaling
+FALL_SPEED_START = 180.0
+FALL_SPEED_CAP = 520.0
+FALL_ACCEL = 6.0
 
-FALL_SPEED_START = 180.0       # px/sec
-FALL_SPEED_CAP = 520.0         # px/sec
-FALL_ACCEL = 6.0               # px/sec^2 (ramps with time)
+SPAWN_PER_SEC_START = 0.85
+SPAWN_PER_SEC_CAP = 3.6
+SPAWN_ACCEL = 0.035
 
-SPAWN_PER_SEC_START = 0.85     # leaves/sec
-SPAWN_PER_SEC_CAP = 3.6        # leaves/sec
-SPAWN_ACCEL = 0.035            # leaves/sec^2 (ramps with time)
-
-MOVE_SPEED_START = 260.0       # px/sec (giraffe base move)
+MOVE_SPEED_START = 260.0
 MOVE_SPEED_CAP = 520.0
-MOVE_ACCEL = 4.5               # px/sec^2
+MOVE_ACCEL = 4.5
 
-HEAD_MOVE_SPEED_START = 260.0  # px/sec (head up/down along neck)
+HEAD_MOVE_SPEED_START = 260.0
 HEAD_MOVE_SPEED_CAP = 520.0
 HEAD_MOVE_ACCEL = 4.5
 
-ROTTEN_CHANCE = 0.22           # chance a leaf is rotten
+ROTTEN_CHANCE = 0.22
 
-# Giraffe neck growth
+# Neck growth
 NECK_START = 90.0
-NECK_CAP = 520.0               # fixed cap height
-NECK_GROW = 18.0               # per good leaf
-NECK_SHRINK = 26.0             # per rotten leaf (bigger penalty)
+NECK_CAP = 520.0
+NECK_GROW = 18.0
+NECK_SHRINK = 26.0
 NECK_MIN = 40.0
 
-# Head size/collision
 HEAD_RADIUS = 18
-
-# Leaf size/speed variance
 LEAF_W, LEAF_H = 18, 12
 
 pygame.init()
-pygame.display.set_caption("Giraffe")
+pygame.display.set_caption("Giraffe Game")
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 font = pygame.font.SysFont("consolas", 22)
@@ -67,10 +62,6 @@ bigfont = pygame.font.SysFont("consolas", 44)
 
 def clamp(v, lo, hi):
     return lo if v < lo else hi if v > hi else v
-
-
-def lerp(a, b, t):
-    return a + (b - a) * t
 
 
 class Leaf:
@@ -95,7 +86,6 @@ class Leaf:
         r = self.rect()
         color = RED if self.rotten else GREEN
 
-        # How the leaf looks, its a rotated diamond
         cx, cy = r.centerx, r.centery
         a = self.angle
         pts = []
@@ -106,28 +96,21 @@ class Leaf:
             pts.append((cx + math.cos(theta) * rx, cy + math.sin(theta) * ry))
         pygame.draw.polygon(surf, color, pts)
         pygame.draw.polygon(surf, DARK, pts, 2)
-
-
 class Giraffe:
     def __init__(self):
         self.base_x = WIDTH // 2
         self.base_y = GROUND_Y
         self.neck = NECK_START
-
-        # head position along neck (0 = at base, neck = at top)
-        self.head_offset = self.neck * 0.7
+        self.head_offset = self.neck * 0.7  # head starts 70% up the neck
 
     def head_pos(self):
-        # neck goes straight up
-        hx = self.base_x
-        hy = self.base_y - self.head_offset
-        return hx, hy
+        return self.base_x, self.base_y - self.head_offset
 
     def top_pos(self):
         return self.base_x, self.base_y - self.neck
 
     def update(self, dt, keys, move_speed, head_speed):
-        # left/right move base
+        # Move body left/right
         dx = 0.0
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
             dx -= move_speed
@@ -136,54 +119,140 @@ class Giraffe:
         self.base_x += dx * dt
         self.base_x = clamp(self.base_x, 60, WIDTH - 60)
 
-        # head up/down (along neck)
+        # Move head up/down
         dh = 0.0
         if keys[pygame.K_UP] or keys[pygame.K_w]:
             dh += head_speed
         if keys[pygame.K_DOWN] or keys[pygame.K_s]:
             dh -= head_speed
         self.head_offset += dh * dt
-
-        # keep head within [some minimum, neck]
         self.head_offset = clamp(self.head_offset, 20.0, self.neck)
 
     def apply_neck_change(self, delta):
-        self.neck = clamp(self.neck + delta, NECK_MIN, NECK_CAP)
-        # keep head_offset valid after neck changes
-        self.head_offset = clamp(self.head_offset, 20.0, self.neck)
+        # Keep head at same percentage of neck
+        if self.neck > 0:
+            ratio = self.head_offset / self.neck
+        else:
+            ratio = 0.7  # fallback
+
+        new_neck = clamp(self.neck + delta, NECK_MIN, NECK_CAP)
+
+        self.neck = new_neck
+        self.head_offset = clamp(new_neck * ratio, 20.0, new_neck)
 
     def draw(self, surf):
-        # body
-        body_w, body_h = 80, 45
-        body = pygame.Rect(int(self.base_x - body_w / 2), int(self.base_y - body_h), body_w, body_h)
-        pygame.draw.rect(surf, BROWN, body, border_radius=10)
-        pygame.draw.rect(surf, DARK, body, 2, border_radius=10)
+        # --- ANIMATION TIMERS ---
+        t = pygame.time.get_ticks() / 1000.0
+        blink = (int(t * 2) % 7 == 0)
+        wag_angle = math.sin(t * 4) * 6
+        mouth_open = abs(self.head_offset - self.neck * 0.7) > 4
 
-        # legs
-        for lx in (-25, -8, 8, 25):
-            leg = pygame.Rect(int(self.base_x + lx - 5), int(self.base_y - 5), 10, 45)
-            pygame.draw.rect(surf, BROWN_DARK, leg, border_radius=6)
-            pygame.draw.rect(surf, DARK, leg, 2, border_radius=6)
+        # --- SHADOW ---
+        shadow_rect = pygame.Rect(
+            int(self.base_x - 60),
+            int(self.base_y - 10),
+            120,
+            25
+        )
+        shadow_surf = pygame.Surface((shadow_rect.width, shadow_rect.height), pygame.SRCALPHA)
+        pygame.draw.ellipse(shadow_surf, (0, 0, 0, 60), shadow_surf.get_rect())
+        surf.blit(shadow_surf, shadow_rect.topleft)
 
-        # neck (straight line thick) 
+        # --- BODY ---
+        body_w, body_h = 110, 60
+        body_rect = pygame.Rect(
+            int(self.base_x - body_w / 2),
+            int(self.base_y - body_h),
+            body_w,
+            body_h
+        )
+        pygame.draw.ellipse(surf, BROWN, body_rect)
+        pygame.draw.ellipse(surf, DARK, body_rect, 2)
+
+        # --- SPOTS ---
+        spot_positions = [
+            (-25, -20),
+            (0, -10),
+            (20, -25),
+            (-10, -30)
+        ]
+        for sx, sy in spot_positions:
+            pygame.draw.circle(
+                surf,
+                BROWN_DARK,
+                (int(self.base_x + sx), int(self.base_y - body_h + sy)),
+                8
+            )
+
+        # --- LEGS ---
+        for lx in (-30, -10, 10, 30):
+            leg_rect = pygame.Rect(
+                int(self.base_x + lx - 6),
+                int(self.base_y - 5),
+                12,
+                50
+            )
+            pygame.draw.rect(surf, BROWN_DARK, leg_rect, border_radius=6)
+            pygame.draw.rect(surf, DARK, leg_rect, 2, border_radius=6)
+
+        # --- TAIL (wagging) ---
+        tail_base = (self.base_x + 50, self.base_y - body_h + 20)
+        tail_end = (
+            tail_base[0] + 20 + wag_angle,
+            tail_base[1] + 20
+        )
+        pygame.draw.line(surf, BROWN_DARK, tail_base, tail_end, 6)
+        pygame.draw.line(surf, DARK, tail_base, tail_end, 2)
+        pygame.draw.circle(surf, BROWN_DARK, tail_end, 6)
+
+        # --- NECK ---
         topx, topy = self.top_pos()
-        pygame.draw.line(surf, BROWN_DARK, (self.base_x, self.base_y - body_h + 8), (topx, topy), 16)
-        pygame.draw.line(surf, DARK, (self.base_x, self.base_y - body_h + 8), (topx, topy), 2)
+        pygame.draw.line(surf, BROWN_DARK,
+                         (self.base_x, self.base_y - body_h + 10),
+                         (topx, topy),
+                         20)
+        pygame.draw.line(surf, DARK,
+                         (self.base_x, self.base_y - body_h + 10),
+                         (topx, topy),
+                         2)
 
-        # head
+        # --- HEAD ---
         hx, hy = self.head_pos()
-        pygame.draw.circle(surf, YELLOW, (int(hx), int(hy)), HEAD_RADIUS)
-        pygame.draw.circle(surf, DARK, (int(hx), int(hy)), HEAD_RADIUS, 2)
+        head_rect = pygame.Rect(int(hx - 22), int(hy - 18), 44, 36)
+        pygame.draw.ellipse(surf, YELLOW, head_rect)
+        pygame.draw.ellipse(surf, DARK, head_rect, 2)
 
-        # "snout" indicator
-        pygame.draw.circle(surf, DARK, (int(hx + 6), int(hy + 2)), 3)
+        # --- EARS ---
+        pygame.draw.polygon(surf, YELLOW, [
+            (hx - 18, hy - 10),
+            (hx - 28, hy - 20),
+            (hx - 14, hy - 18)
+        ])
+        pygame.draw.polygon(surf, YELLOW, [
+            (hx + 18, hy - 10),
+            (hx + 28, hy - 20),
+            (hx + 14, hy - 18)
+        ])
 
-        # marker at top of full neck (helps visualize max growth)
-        pygame.draw.circle(surf, (255, 255, 255), (int(topx), int(topy)), 4)
+        # --- HORNS ---
+        pygame.draw.line(surf, DARK, (hx - 8, hy - 18), (hx - 8, hy - 30), 4)
+        pygame.draw.line(surf, DARK, (hx + 8, hy - 18), (hx + 8, hy - 30), 4)
+        pygame.draw.circle(surf, DARK, (hx - 8, hy - 32), 4)
+        pygame.draw.circle(surf, DARK, (hx + 8, hy - 32), 4)
 
+        # --- EYE (blinks) ---
+        if not blink:
+            pygame.draw.circle(surf, DARK, (int(hx + 10), int(hy - 2)), 4)
 
+        # --- MOUTH ---
+        if mouth_open:
+            pygame.draw.line(surf, DARK, (hx + 10, hy + 10), (hx + 20, hy + 12), 3)
+        else:
+            pygame.draw.line(surf, DARK, (hx + 10, hy + 10), (hx + 18, hy + 10), 2)
+
+        # --- TOP OF NECK MARKER ---
+        pygame.draw.circle(surf, WHITE, (int(topx), int(topy)), 4)
 def circle_rect_collide(cx, cy, radius, rect: pygame.Rect) -> bool:
-    # clamp circle center to rect
     closest_x = clamp(cx, rect.left, rect.right)
     closest_y = clamp(cy, rect.top, rect.bottom)
     dx = cx - closest_x
@@ -198,38 +267,112 @@ def main():
 
     elapsed = 0.0
     spawn_accum = 0.0
-    score = 0  # how many good leaves were eaten
+    score = 0
 
     game_over = False
     death_reason = ""
 
+    game_state = "start"
+
     while True:
         dt = clock.tick(FPS) / 1000.0
 
+        # -------------------------
+        # EVENT HANDLING
+        # -------------------------
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            if event.type == pygame.KEYDOWN and game_over:
-                if event.key == pygame.K_r:
-                    # restart
-                    giraffe = Giraffe()
-                    leaves = []
-                    elapsed = 0.0
-                    spawn_accum = 0.0
-                    score = 0
-                    game_over = False
-                    death_reason = ""
-                if event.key == pygame.K_ESCAPE:
-                    pygame.quit()
-                    sys.exit()
+
+            # START SCREEN
+            if game_state == "start":
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_SPACE:
+                        game_state = "play"
+                    if event.key == pygame.K_i:
+                        game_state = "instructions"
+
+            # INSTRUCTIONS SCREEN
+            elif game_state == "instructions":
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_b:
+                    game_state = "start"
+
+            # PAUSE SCREEN
+            elif game_state == "pause":
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_p:
+                    game_state = "play"
+
+            # GAMEPLAY
+            elif game_state == "play":
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_p:
+                    game_state = "pause"
+
+                if event.type == pygame.KEYDOWN and game_over:
+                    if event.key == pygame.K_r:
+                        giraffe = Giraffe()
+                        leaves = []
+                        elapsed = 0.0
+                        spawn_accum = 0.0
+                        score = 0
+                        game_over = False
+                        death_reason = ""
+                    if event.key == pygame.K_ESCAPE:
+                        pygame.quit()
+                        sys.exit()
 
         keys = pygame.key.get_pressed()
 
-        if not game_over:
+        # -------------------------
+        # START SCREEN DRAW
+        # -------------------------
+        if game_state == "start":
+            screen.fill(SKY)
+
+            title = bigfont.render("GIRAFFE GAME", True, DARK)
+            prompt = font.render("Press SPACE to Start", True, DARK)
+            inst = font.render("Press I for Instructions", True, DARK)
+
+            screen.blit(title, (WIDTH//2 - title.get_width()//2, HEIGHT//2 - 120))
+            screen.blit(prompt, (WIDTH//2 - prompt.get_width()//2, HEIGHT//2))
+            screen.blit(inst, (WIDTH//2 - inst.get_width()//2, HEIGHT//2 + 40))
+
+            pygame.display.flip()
+            continue
+
+        # -------------------------
+        # INSTRUCTIONS SCREEN DRAW
+        # -------------------------
+        if game_state == "instructions":
+            screen.fill(WHITE)
+
+            lines = [
+                "INSTRUCTIONS",
+                "",
+                "Move Left/Right: A/D or ←/→",
+                "Move Head Up/Down: W/S or ↑/↓",
+                "Eat green leaves to grow your neck",
+                "Avoid letting green leaves hit the ground",
+                "",
+                "Press B to go back"
+            ]
+
+            y = 120
+            for line in lines:
+                txt = font.render(line, True, DARK)
+                screen.blit(txt, (WIDTH//2 - txt.get_width()//2, y))
+                y += 40
+
+            pygame.display.flip()
+            continue
+
+        # -------------------------
+        # GAMEPLAY LOGIC
+        # -------------------------
+        if game_state == "play" and not game_over:
             elapsed += dt
 
-            # ramp values with caps
+            # Difficulty scaling
             fall_speed = clamp(FALL_SPEED_START + FALL_ACCEL * elapsed, FALL_SPEED_START, FALL_SPEED_CAP)
             spawn_rate = clamp(SPAWN_PER_SEC_START + SPAWN_ACCEL * elapsed, SPAWN_PER_SEC_START, SPAWN_PER_SEC_CAP)
             move_speed = clamp(MOVE_SPEED_START + MOVE_ACCEL * elapsed, MOVE_SPEED_START, MOVE_SPEED_CAP)
@@ -237,7 +380,7 @@ def main():
 
             giraffe.update(dt, keys, move_speed, head_speed)
 
-            # spawning (rate = leaves/sec)
+            # Leaf spawning
             spawn_accum += spawn_rate * dt
             while spawn_accum >= 1.0:
                 spawn_accum -= 1.0
@@ -246,12 +389,12 @@ def main():
                 rotten = rng.random() < ROTTEN_CHANCE
                 leaves.append(Leaf(x, y, rotten, fall_speed))
 
-            # update leaves + collisions
+            # Update leaves
             hx, hy = giraffe.head_pos()
             for leaf in leaves:
                 leaf.update(dt)
 
-            # This eats the leaves if the head touches them
+            # Collision with head
             remaining = []
             for leaf in leaves:
                 r = leaf.rect()
@@ -265,12 +408,11 @@ def main():
                     remaining.append(leaf)
             leaves = remaining
 
-            # This is where the game fails if the leaf hits the ground 
+            # Check if leaves hit ground
             still = []
             for leaf in leaves:
                 if leaf.y + leaf.h / 2 >= GROUND_Y:
                     if leaf.rotten:
-                        # rotten leaf just splats / disappears
                         continue
                     else:
                         game_over = True
@@ -280,20 +422,20 @@ def main():
                     still.append(leaf)
             leaves = still
 
-        # ----------------
-        # Draw
-        # ----------------
+        # -------------------------
+        # DRAW GAMEPLAY
+        # -------------------------
         screen.fill(SKY)
 
-        # ground
+        # Ground
         pygame.draw.rect(screen, GROUND, pygame.Rect(0, GROUND_Y, WIDTH, HEIGHT - GROUND_Y))
         pygame.draw.line(screen, DARK, (0, GROUND_Y), (WIDTH, GROUND_Y), 3)
 
-        # leaves
+        # Leaves
         for leaf in leaves:
             leaf.draw(screen)
 
-        # giraffe
+        # Giraffe
         giraffe.draw(screen)
 
         # HUD
@@ -305,11 +447,29 @@ def main():
         screen.blit(score_text, (18, 40))
         screen.blit(neck_text, (18, 66))
 
-        # instructions
-        inst = font.render("Move: A/D or ←/→   Head: W/S or ↑/↓   (R to restart after game over)", True, DARK)
+        inst = font.render("Move: A/D or ←/→   Head: W/S or ↑/↓   P = Pause", True, DARK)
         screen.blit(inst, (18, HEIGHT - 32))
 
-        # Game over overlay
+        # -------------------------
+        # PAUSE SCREEN
+        # -------------------------
+        if game_state == "pause":
+            overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 140))
+            screen.blit(overlay, (0, 0))
+
+            msg = bigfont.render("PAUSED", True, WHITE)
+            msg2 = font.render("Press P to Resume", True, WHITE)
+
+            screen.blit(msg, (WIDTH//2 - msg.get_width()//2, HEIGHT//2 - 40))
+            screen.blit(msg2, (WIDTH//2 - msg2.get_width()//2, HEIGHT//2 + 20))
+
+            pygame.display.flip()
+            continue
+
+        # -------------------------
+        # GAME OVER SCREEN
+        # -------------------------
         if game_over:
             overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 110))
@@ -326,7 +486,10 @@ def main():
             screen.blit(msg4, (WIDTH // 2 - msg4.get_width() // 2, HEIGHT // 2 + 35))
 
         pygame.display.flip()
-
+# -------------------------
+# RUN THE GAME
+# -------------------------
 
 if __name__ == "__main__":
     main()
+
