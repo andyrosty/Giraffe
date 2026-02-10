@@ -21,6 +21,10 @@ Survive as long as you can — the game gets harder over time!
 - Restart after game over: `R`
 - Quit: `ESC`
 
+## 🖼️ Screenshot
+
+![Gameplay screenshot](Screenshots/Screenshot%202026-02-09%20at%208.19.18%E2%80%AFPM.png)
+
 ---
 
 ## 🛠 Requirements

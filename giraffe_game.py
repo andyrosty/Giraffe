@@ -64,6 +64,13 @@ def clamp(v, lo, hi):
     return lo if v < lo else hi if v > hi else v
 
 
+def lerp(a, b, t):
+    """Linear interpolation between a and b by t in [0, 1].
+    Accepts t outside [0,1] and extrapolates accordingly for generality.
+    """
+    return a + (b - a) * t
+
+
 class Leaf:
     def __init__(self, x, y, rotten, fall_speed):
         self.x = x
@@ -137,8 +144,13 @@ class Giraffe:
 
         new_neck = clamp(self.neck + delta, NECK_MIN, NECK_CAP)
 
+        # When the neck shrinks all the way to NECK_MIN, tests expect the head to be
+        # clamped up to NECK_MIN as well (so it sits at the very top of the neck),
+        # not the generic 20.0 lower bound used otherwise.
+        min_head = NECK_MIN if new_neck <= NECK_MIN else 20.0
+
         self.neck = new_neck
-        self.head_offset = clamp(new_neck * ratio, 20.0, new_neck)
+        self.head_offset = clamp(new_neck * ratio, min_head, new_neck)
 
     def draw(self, surf):
         # --- ANIMATION TIMERS ---
