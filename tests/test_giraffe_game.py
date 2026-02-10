@@ -195,6 +195,49 @@ class TestCollision(unittest.TestCase):
 
 
 class TestGiraffe(unittest.TestCase):
+    def test_head_and_top_positions(self):
+        g = gg.Giraffe()
+        expected_base_x = gg.WIDTH // 2
+        expected_base_y = gg.GROUND_Y
+        self.assertEqual(g.base_x, expected_base_x)
+        self.assertEqual(g.base_y, expected_base_y)
+
+        hx, hy = g.head_pos()
+        tx, ty = g.top_pos()
+        self.assertEqual(hx, expected_base_x)
+        self.assertAlmostEqual(hy, expected_base_y - g.head_offset)
+        self.assertEqual(tx, expected_base_x)
+        self.assertAlmostEqual(ty, expected_base_y - g.neck)
+
+    def test_update_movement_and_clamps(self):
+        g = gg.Giraffe()
+        start_x = g.base_x
+
+        keys = {
+            gg.pygame.K_LEFT: True,
+            gg.pygame.K_a: False,
+            gg.pygame.K_RIGHT: False,
+            gg.pygame.K_d: False,
+            gg.pygame.K_UP: True,
+            gg.pygame.K_w: False,
+            gg.pygame.K_DOWN: False,
+            gg.pygame.K_s: False,
+        }
+        g.update(dt=1.0, keys=keys, move_speed=300.0, head_speed=400.0)
+        self.assertLess(g.base_x, start_x)
+        self.assertLessEqual(g.base_x, gg.WIDTH - 60)
+        self.assertGreaterEqual(g.base_x, 60)
+        self.assertLessEqual(g.head_offset, g.neck)
+
+        keys[gg.pygame.K_LEFT] = False
+        keys[gg.pygame.K_RIGHT] = True
+        keys[gg.pygame.K_UP] = False
+        keys[gg.pygame.K_DOWN] = True
+        g.update(dt=10.0, keys=keys, move_speed=10_000.0, head_speed=10_000.0)
+        self.assertEqual(g.base_x, gg.WIDTH - 60)
+        self.assertGreaterEqual(g.head_offset, 20.0)
+        self.assertLessEqual(g.head_offset, g.neck)
+
     def test_apply_neck_change_clamps(self):
         g = gg.Giraffe()
         # grow beyond cap
@@ -209,14 +252,33 @@ class TestGiraffe(unittest.TestCase):
 
 
 class TestLeaf(unittest.TestCase):
+    def test_leaf_rect_and_draw(self):
+        leaf = gg.Leaf(x=100, y=200, rotten=True, fall_speed=120.0)
+        leaf.w = 20
+        leaf.h = 10
+        leaf.angle = 0.0
+        leaf.spin = 1.0
+        rect = leaf.rect()
+
+        self.assertEqual(rect.left, 90)
+        self.assertEqual(rect.top, 195)
+        self.assertEqual(rect.width, 20)
+        self.assertEqual(rect.height, 10)
+
+        surface = gg.pygame.display.set_mode((gg.WIDTH, gg.HEIGHT))
+        leaf.draw(surface)
+
     def test_leaf_update_moves_down(self):
         leaf = gg.Leaf(x=50, y=0, rotten=False, fall_speed=100.0)
         # override randomized fall_speed for determinism
         leaf.fall_speed = 100.0
+        leaf.spin = 2.0
+        leaf.angle = 0.0
         y0 = leaf.y
         dt = 0.25
         leaf.update(dt)
         self.assertAlmostEqual(leaf.y, y0 + 100.0 * dt)
+        self.assertAlmostEqual(leaf.angle, leaf.spin * dt, delta=0.0001)
 
 
 if __name__ == "__main__":
